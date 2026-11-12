@@ -110,11 +110,43 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
   // reproduce la jerarquía del diseño sin navegación. «Gestión de Asignación Presupuestaria Multianual»
   // no es un nodo real del diseño sino el encabezado de sección de «Catálogos»; como el menú no tiene
   // encabezados de sección, se maqueta como un nodo agrupador atenuado.
+  // Rama APM: Procesos presupuesto › Programación multianual presupuestaria (DGPP - MEF) - APM.
+  // «Generación de reporte APM» está implementado (su hoja «Configuración» abre el Catálogo de
+  // Versiones); el resto es maqueta «Próximamente».
   {
     id: 'procesos-presupuesto',
     label: 'Procesos presupuesto',
-    comingSoon: true,
-    expandable: true,
+    children: [
+      {
+        id: 'programacion-multianual-apm',
+        label: 'Programación multianual presupuestaria (DGPP - MEF) - APM',
+        children: [
+          {
+            id: 'generacion-reporte-apm',
+            label: 'Generación de reporte APM',
+            children: [
+              {
+                id: 'generacion-reporte-apm-configuracion',
+                label: 'Configuración de la generación de reporte APM',
+                moduleRoute: '/procesos/generacion-reporte-apm',
+              },
+              {
+                id: 'generacion-reporte-apm-documentos',
+                label: 'Documentos y registros de la generación de reporte APM',
+                comingSoon: true,
+              },
+              {
+                id: 'generacion-reporte-apm-consultas',
+                label: 'Consultas de la generación de reporte APM',
+                comingSoon: true,
+              },
+            ],
+          },
+          { id: 'modificacion-apm-proceso', label: 'Modificación de la APM', comingSoon: true, expandable: true },
+          { id: 'desagregacion-apm', label: 'Desagregación de la APM', comingSoon: true, expandable: true },
+        ],
+      },
+    ],
   },
   {
     id: 'clasificadores-catalogos',

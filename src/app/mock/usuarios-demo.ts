@@ -3,7 +3,7 @@ import type { PerfilItem } from '../core/api/auth-api.service';
 /**
  * Usuarios de demostración del taller. Entran con su DNI y la contraseña común.
  *
- * - Ana (creador) registra y verifica solicitudes.
+ * - Juan (configurador) administra catálogos y tipos de documento del proceso.
  * - Luis (aprobador) aprueba, observa o rechaza lo verificado.
  * - Carla tiene los dos perfiles: sirve para mostrar el cambio de perfil desde el menú del usuario.
  *
@@ -41,20 +41,20 @@ const ENTIDAD = {
   entidadAmbitoCodigo: 'GN',
 };
 
-function perfil(id: string, rolCodigo: 'CREADOR' | 'APROBADOR', rol: string, perfilFuncional: string): PerfilItem {
+function perfil(id: string, rolCodigo: 'CREADOR' | 'CONFIGURADOR' | 'APROBADOR', rol: string, perfilFuncional: string): PerfilItem {
   return { id, ...ENTIDAD, rol, rolCodigo, perfilFuncional };
 }
 
 export const USUARIOS_DEMO: UsuarioDemo[] = [
   {
-    id: 'usr-ana',
+    id: 'usr-juan',
     dni: '11111111',
-    email: 'ana.torres@taller.pe',
-    nombres: 'Ana',
-    apellidoPaterno: 'Torres',
-    apellidoMaterno: 'Díaz',
-    descripcion: 'Creador: registra y verifica solicitudes',
-    perfiles: [perfil('perfil-ana-creador', 'CREADOR', 'Creador', 'Operador de cuentas bancarias')],
+    email: 'juan.doe@taller.pe',
+    nombres: 'Juan Doe',
+    apellidoPaterno: 'Perez',
+    apellidoMaterno: 'Perez',
+    descripcion: 'Configurador: administra catálogos y tipos de documento',
+    perfiles: [perfil('perfil-juan-configurador', 'CONFIGURADOR', 'Configurador', 'Configurador del proceso')],
   },
   {
     id: 'usr-luis',

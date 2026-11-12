@@ -1,5 +1,6 @@
 export type UserRole =
   | 'creator'
+  | 'configurator'
   | 'reviewer'
   | 'approver'
   | 'admin_sistema'
@@ -9,6 +10,7 @@ export type UserRole =
 /** Mapeo único backend → frontend de códigos de rol. */
 export const ROL_MAP: Record<string, UserRole> = {
   CREADOR: 'creator',
+  CONFIGURADOR: 'configurator',
   APROBADOR: 'approver',
   REVISOR: 'reviewer',
   ADMIN_SISTEMA: 'admin_sistema',
@@ -63,6 +65,7 @@ export type RoleRouteData = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   creator: 'Creador',
+  configurator: 'Configurador',
   reviewer: 'Revisor',
   approver: 'Aprobador',
   admin_sistema: 'Administrador del Sistema',
@@ -83,6 +86,15 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'document.create', 'document.edit', 'document.delete',
     'document.verify', 'document.read',
     'chart_account.read', 'chart_account.create',
+  ],
+  // Rol de configuración: administra catálogos y tipos de documento del
+  // proceso y puede crear documentos (habilita el botón «Crear» del rail);
+  // solo lectura sobre cuentas. No aprueba ni rechaza.
+  // (Permisos tentativos para la base APM: ajustar según el alcance real.)
+  configurator: [
+    'document.read', 'document.create', 'document.edit',
+    'chart_account.read',
+    'doc_type.manage', 'catalog.manage',
   ],
   reviewer: [
     'document.review', 'document.observe', 'document.read',

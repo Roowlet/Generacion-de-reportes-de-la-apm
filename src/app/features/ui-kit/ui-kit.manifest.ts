@@ -13230,7 +13230,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
     "usa": [
       "siaf-data-table"
     ],
-    "sinUso": true
+    "sinUso": false
   },
   {
     "selector": "siaf-table-controls",

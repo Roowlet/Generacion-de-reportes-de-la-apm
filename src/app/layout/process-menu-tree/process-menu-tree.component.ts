@@ -104,7 +104,7 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
     <ng-template #treeTemplate let-items let-level="level">
       @for (node of items; track node.id) {
         <div class="w-full" [class.pl-[27px]]="level > 0">
-          <div class="w-full" [class.border-l]="level > 0" [style.borderColor]="level > 0 ? 'var(--sys-color-divider-strong)' : null" [class.pl-3]="level > 0">
+          <div class="w-full" [class.border-l]="level > 0" [style.borderColor]="level > 0 ? 'var(--sys-color-divider-strong)' : null">
             @if (node.sectionHeader) {
               <!-- Encabezado de sección (no clickeable): subtítulo gris en
                    mayúsculas con ícono cuadrado. Sus hijos se muestran siempre. -->
@@ -148,8 +148,8 @@ export { DEFAULT_PROCESS_TREE, findProcessPathById } from '../../shared/utils/pr
 
                 <span
                   class="min-w-0 flex-1 text-sm leading-normal"
-                  [class.font-bold]="level === 0"
-                  [class.font-normal]="level > 0"
+                  [class.font-bold]="level === 0 || isNodeHighlighted(node, level)"
+                  [class.font-normal]="level > 0 && !isNodeHighlighted(node, level)"
                   [class.tracking-[-0.02px]]="level === 0"
                   [class.tracking-[0.0249px]]="level > 0"
                   [class.text-[var(--sys-color-text-neutral-activated)]]="isNodeHighlighted(node, level)"
@@ -246,8 +246,10 @@ export class ProcessMenuTreeComponent implements OnChanges, OnInit {
     return Boolean(this.query) || this.expandedIds.has(node.id);
   }
 
-  isNodeHighlighted(node: ProcessMenuNode, level: number): boolean {
-    return this.selectedId === node.id || (level === 0 && this.activeAncestorIds.has(node.id));
+  isNodeHighlighted(node: ProcessMenuNode, _level: number): boolean {
+    // Solo el nodo elegido se ve «seleccionado» (fondo azul + negrita azul).
+    // Sus ancestros quedan en estado normal (enable), no seleccionados.
+    return this.selectedId === node.id;
   }
 
   onQuery(value: string): void {

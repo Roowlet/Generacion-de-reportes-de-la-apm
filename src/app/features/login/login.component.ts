@@ -125,15 +125,27 @@ type LoginTab = 'entidades' | 'proveedores';
                 <h2 id="usuarios-demo-titulo" class="m-0 text-base font-bold text-[var(--sys-color-text-neutral-high)]">Usuarios de demostración</h2>
                 <siaf-button variant="text" size="sm" icon="restart_alt" (click)="reiniciarDatos()">Reiniciar datos</siaf-button>
               </div>
+              <!-- Usuario activo: seleccionable -->
               <siaf-list
                 ariaLabel="Usuarios de demostración"
-                [items]="usuariosDemo"
+                [items]="usuariosDemoActivos"
                 [selectable]="true"
                 [wrapDescription]="true"
                 [dividers]="true"
                 [selectedId]="usuarioElegido()"
                 (selectedIdChange)="elegirUsuario($event)"
               />
+              <!-- Usuarios deshabilitados: visibles pero en gris e inertes (solo en el login) -->
+              @if (usuariosDemoInactivos.length) {
+                <div class="pointer-events-none opacity-50" aria-disabled="true">
+                  <siaf-list
+                    ariaLabel="Usuarios no disponibles"
+                    [items]="usuariosDemoInactivos"
+                    [wrapDescription]="true"
+                    [dividers]="true"
+                  />
+                </div>
+              }
               <message-box [text]="'Elija un usuario para llenar el DNI. La contraseña de todos es ' + contrasenaDemo + '.'" />
               @if (datosReiniciados()) {
                 <siaf-alert
@@ -236,12 +248,17 @@ export class LoginComponent {
 
   // ── Taller: usuarios de demostración (src/app/mock/usuarios-demo.ts) ──
   readonly contrasenaDemo = CONTRASENA_DEMO;
-  readonly usuariosDemo: ListItem[] = USUARIOS_DEMO.map((u) => ({
-    id: u.dni,
-    title: `${u.nombres} ${u.apellidoPaterno} ${u.apellidoMaterno}`,
-    description: `DNI ${u.dni} · ${u.descripcion}`,
-    leading: { type: 'avatar', initials: `${u.nombres[0]}${u.apellidoPaterno[0]}` },
-  }));
+  private static toListItem(u: (typeof USUARIOS_DEMO)[number]): ListItem {
+    return {
+      id: u.dni,
+      title: `${u.nombres} ${u.apellidoPaterno} ${u.apellidoMaterno}`,
+      description: `DNI ${u.dni} · ${u.descripcion}`,
+      leading: { type: 'avatar', initials: `${u.nombres[0]}${u.apellidoPaterno[0]}` },
+    };
+  }
+  // Solo el primer usuario queda activo; el resto se muestra deshabilitado.
+  readonly usuariosDemoActivos: ListItem[] = USUARIOS_DEMO.slice(0, 1).map(LoginComponent.toListItem);
+  readonly usuariosDemoInactivos: ListItem[] = USUARIOS_DEMO.slice(1).map(LoginComponent.toListItem);
   readonly usuarioElegido = signal<string | null>(null);
   readonly datosReiniciados = signal(false);
 
