@@ -149,9 +149,13 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
     ],
   },
   {
+    // Oculto del menú (en el escritorio virtual solo se ve «Procesos presupuesto»),
+    // pero conservado en el árbol: sus hojas implementadas (catálogo de subtipo de
+    // acción y modificación de la APM) siguen resolviendo migas de pan y Crear documento.
     id: 'clasificadores-catalogos',
     label: 'Clasificadores y catálogos',
     comingSoon: true,
+    hiddenInMenu: true,
     children: [
       { id: 'clasificadores', label: 'Clasificadores', comingSoon: true, expandable: true },
       {
@@ -167,6 +171,20 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
               { id: 'catalogo-reportes-apm', label: 'Catálogo de reportes de la APM', comingSoon: true },
               { id: 'catalogo-archivos-apm', label: 'Catálogo de archivos de la APM', comingSoon: true },
               { id: 'catalogo-versiones', label: 'Catálogo de Versiones', comingSoon: true },
+              {
+                id: 'catalogo-subtipo-accion',
+                label: 'Catálogo de subtipo de acción',
+                createRoute: '/procesos/catalogo-subtipo-accion/solicitud',
+                documentOptions: ['Solicitud de subtipo de acción'],
+                documentCreateOptions: [
+                  {
+                    label: 'Solicitud de subtipo de acción',
+                    route: '/procesos/catalogo-subtipo-accion/solicitud',
+                    actionTypes: ['Creación'],
+                  },
+                ],
+                actionTypeOptions: ['Creación'],
+              },
               {
                 id: 'modificacion-apm',
                 label: 'Modificación de la APM',
@@ -188,10 +206,12 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
     ],
   },
   {
+    // Oculto del menú: en el escritorio virtual solo se ve «Procesos presupuesto».
     id: 'consultas-reportes',
     label: 'Consultas y reportes',
     comingSoon: true,
     expandable: true,
+    hiddenInMenu: true,
   },
 ];
 
