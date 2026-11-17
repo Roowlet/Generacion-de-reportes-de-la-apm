@@ -30,4 +30,17 @@ export const PRESUPUESTO_ROUTES: Routes = [
         (m) => m.ModificacionApmRequestComponent,
       ),
   },
+  {
+    // La ruta base del proceso redirige a la solicitud (pantalla única del catálogo).
+    path: 'procesos/catalogo-subtipo-accion',
+    pathMatch: 'full',
+    redirectTo: 'procesos/catalogo-subtipo-accion/solicitud',
+  },
+  {
+    path: 'procesos/catalogo-subtipo-accion/solicitud',
+    loadComponent: () =>
+      import('./catalogo-subtipo-accion/pages/solicitud/catalogo-subtipo-accion-request.component').then(
+        (m) => m.CatalogoSubtipoAccionRequestComponent,
+      ),
+  },
 ];
