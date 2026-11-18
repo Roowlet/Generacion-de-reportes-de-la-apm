@@ -511,7 +511,17 @@ interface PiePaginaApm {
                 </nav>
 
                 <section class="flex flex-col gap-siaf-md lg:border-l lg:border-[var(--sys-color-divider-default)] lg:pl-siaf-lg">
-                  <h2 class="m-0 text-base font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)]">Pendientes</h2>
+                  <header class="flex items-center justify-between gap-siaf-md">
+                    <h2 class="m-0 text-base font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)]">Pendientes</h2>
+                    <siaf-button
+                      variant="accent"
+                      size="md"
+                      [iconOnly]="true"
+                      icon="file_download"
+                      ariaLabel="Descargar en Excel"
+                      (click)="descargarPendientes()"
+                    />
+                  </header>
                   <siaf-table [columns]="columnasPendientes" [rows]="pendientesRows" idKey="codigo" />
                 </section>
               </div>
@@ -888,6 +898,29 @@ export class GeneracionReporteApmComponent {
   /** Pendiente: generar el PDF del reporte procesado. */
   generarPdf(): void {
     // Placeholder hasta conectar la generación real del PDF.
+  }
+
+  /**
+   * Descarga un Excel (.xlsx) con lo que muestra la grilla de Pendientes (encabezados + filas).
+   * La librería se carga al exportar, así no pesa en la pantalla hasta que se usa.
+   */
+  async descargarPendientes(): Promise<void> {
+    const { Workbook } = await import('exceljs');
+    const libro = new Workbook();
+    const hoja = libro.addWorksheet('Pendientes');
+    hoja.columns = this.columnasPendientes.map((c) => ({ header: c.label, key: c.key, width: 32 }));
+    hoja.getRow(1).font = { bold: true };
+    this.pendientesRows.forEach((fila) => hoja.addRow(fila));
+    const buffer = await libro.xlsx.writeBuffer();
+    const fecha = new Date().toISOString().slice(0, 10);
+    const url = URL.createObjectURL(
+      new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+    );
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = `pendientes-${fecha}.xlsx`;
+    enlace.click();
+    URL.revokeObjectURL(url);
   }
 
   subtitulo(archivo: ArchivoApm): string {
