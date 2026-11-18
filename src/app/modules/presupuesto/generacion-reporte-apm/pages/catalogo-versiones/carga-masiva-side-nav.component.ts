@@ -57,6 +57,7 @@ import { UploaderComponent } from '../../../../../shared/ui/uploader/uploader.co
                 accept=".xls,.xlsx"
                 hint="Se permiten archivos de 10 MB como máximo"
                 [maxSizeMb]="10"
+                [retryable]="false"
                 (fileSelected)="onFileSelected($event)"
                 (fileRemoved)="onFileRemoved($event)"
               />

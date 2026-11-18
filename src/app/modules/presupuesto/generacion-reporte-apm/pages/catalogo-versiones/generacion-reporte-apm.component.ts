@@ -1,9 +1,12 @@
-import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 
+import { CurrentUserService } from '../../../../../core/auth/current-user.service';
 import { PageHeaderComponent } from '../../../../../shared/components/page-header/page-header.component';
 import { PageShellComponent } from '../../../../../shared/components/page-shell/page-shell.component';
 import { BreadcrumbItem } from '../../../../../shared/components/breadcrumb/breadcrumb.component';
 import { DataTableColumn, DataTableRow } from '../../../../../shared/components/data-table/data-table.component';
+import { FormTableSearchComponent } from '../../../../../shared/components/form-table-search/form-table-search.component';
+import { PaginationComponent } from '../../../../../shared/components/pagination/pagination.component';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
@@ -23,6 +26,10 @@ interface ArchivoApm {
   estado: EstadoArchivo;
   /** Fecha/hora en que terminó la validación (solo si quedó «validado»). */
   validadoEn?: string;
+  /** Usuario que importó el archivo (el mismo rótulo que la barra superior: el rol activo). */
+  importadoPor?: string;
+  /** Fecha/hora en que se importó el archivo (al confirmar la carga). */
+  importadoEn?: string;
 }
 
 /** Fila base de las cadenas de la APM (datos de ejemplo mientras no hay backend). */
@@ -48,9 +55,27 @@ interface GastoApm {
   m2029: string;
 }
 
-/** Fila de la grilla de Pie de página (descripción + monto). */
+/** Fila de la grilla de Anexo 1 (clasificadores institucional/fuente/objeto y montos por año). */
+interface AnexoApm {
+  codigo: string;
+  /** La fila tiene un registro erróneo (ícono rojo en la columna Código). */
+  errada: boolean;
+  entidad: string;
+  unidadEjecutora: string;
+  codigoFuente: string;
+  fuente: string;
+  categoria: string;
+  codigoObjeto: string;
+  objeto: string;
+  m2027: string;
+  m2028: string;
+  m2029: string;
+}
+
+/** Fila de la grilla de Pie de página (pliego + texto de la nota + monto). */
 interface PiePaginaApm {
-  descripcion: string;
+  pliego: string;
+  texto: string;
   monto: string;
   /** La fila tiene un registro erróneo (muestra el ícono rojo). */
   errada: boolean;
@@ -83,6 +108,8 @@ interface PiePaginaApm {
     MessageBoxComponent,
     AlertComponent,
     TableComponent,
+    FormTableSearchComponent,
+    PaginationComponent,
     ApmCargaMasivaSideNavComponent,
   ],
   template: `
@@ -108,7 +135,7 @@ interface PiePaginaApm {
           >
             <!-- Acento azul corto en el lateral izquierdo (no un borde completo). -->
             <span class="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--sys-color-bg-brand-primary)]" aria-hidden="true"></span>
-            <dl class="m-0 grid flex-1 grid-cols-2 gap-x-siaf-xl gap-y-siaf-sm sm:grid-cols-3">
+            <dl class="m-0 grid flex-1 grid-cols-2 gap-x-siaf-xl gap-y-siaf-sm sm:grid-cols-3 lg:grid-cols-5">
               @for (campo of version; track campo.label) {
                 <div class="flex flex-col gap-siaf-xxs">
                   <dt class="text-xs text-[var(--sys-color-text-neutral-medium)]">{{ campo.label }}</dt>
@@ -116,7 +143,7 @@ interface PiePaginaApm {
                 </div>
               }
             </dl>
-            <siaf-button variant="text" size="md" [iconOnly]="true" icon="more_vert" ariaLabel="Opciones de la versión" />
+            <siaf-button variant="text" size="md" [iconOnly]="true" icon="settings" ariaLabel="Configuración de la versión" />
           </div>
         </section>
 
@@ -165,7 +192,7 @@ interface PiePaginaApm {
                             type="button"
                             class="flex w-full items-center gap-siaf-sm py-siaf-xs pl-9 pr-siaf-md text-left transition hover:bg-[var(--sys-color-bg-states-light-hover)]"
                             [class.bg-[var(--sys-color-bg-states-light-selected)]]="archivoAbierto() === a.id"
-                            (click)="archivoAbierto.set(a.id)"
+                            (click)="abrirArchivo(a.id)"
                           >
                             <span
                               class="min-w-0 flex-1 truncate text-sm"
@@ -235,31 +262,40 @@ interface PiePaginaApm {
                       />
                     }
 
+                    <!-- Buscador de la grilla: campo a todo el ancho + Filtrar y Más opciones -->
+                    <siaf-form-table-search
+                      [value]="busqueda()"
+                      placeholder="Buscar"
+                      (valueChange)="onBuscar($event)"
+                    />
+
                     @if (usaGrillaCompleta()) {
                       <!-- Grilla completa (Gastos y Anexo 1): cabeceras agrupadas, años y fila TOTAL -->
                       <div class="siaf-table-shell">
                         <table class="siaf-table min-w-[1400px]">
                           <thead>
+                            <!-- Cabecera con divisores verticales entre celdas (border-l salvo la 1ª columna) -->
                             <tr class="siaf-table-head-row">
                               <th class="siaf-table-th whitespace-nowrap" rowspan="2">Línea</th>
-                              <th class="siaf-table-th whitespace-nowrap" colspan="1">Clasificador institucional</th>
-                              <th class="siaf-table-th whitespace-nowrap" colspan="2">Clasificador fuente de financiamiento</th>
-                              <th class="siaf-table-th whitespace-nowrap" rowspan="2">Categoría del gasto</th>
-                              <th class="siaf-table-th whitespace-nowrap" colspan="1">Clasificador objeto del gasto</th>
-                              <th class="siaf-table-th whitespace-nowrap" colspan="3">Asignación presupuestaria</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="1">Clasificador institucional</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador fuente de financiamiento</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" rowspan="2">Categoría del gasto</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="1">Clasificador objeto del gasto</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="3">Asignación presupuestaria</th>
                             </tr>
                             <tr class="siaf-table-head-row">
-                              <th class="siaf-table-th whitespace-nowrap">Entidad / Pliego</th>
-                              <th class="siaf-table-th whitespace-nowrap">Fuente de financiamiento</th>
-                              <th class="siaf-table-th whitespace-nowrap">Subfuente de financiamiento</th>
-                              <th class="siaf-table-th whitespace-nowrap">Genérica</th>
-                              <th class="siaf-table-th whitespace-nowrap text-right">2027</th>
-                              <th class="siaf-table-th whitespace-nowrap text-right">2028</th>
-                              <th class="siaf-table-th whitespace-nowrap text-right">2029</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Entidad / Pliego</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Fuente de financiamiento</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Subfuente de financiamiento</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Genérica</th>
+                              <!-- Solo la cabecera de los años va centrada; los montos quedan a la izquierda -->
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2027</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2028</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2029</th>
                             </tr>
                           </thead>
                           <tbody>
-                            @for (g of gastosFilas(); track g.linea) {
+                            @for (g of gastosFilasPagina(); track g.linea) {
                               <tr class="siaf-table-row">
                                 <td class="siaf-table-td">
                                   <span class="inline-flex items-center gap-siaf-xs whitespace-nowrap">
@@ -274,41 +310,104 @@ interface PiePaginaApm {
                                 <td class="siaf-table-td whitespace-nowrap">{{ g.subfuente }}</td>
                                 <td class="siaf-table-td whitespace-nowrap">{{ g.categoria }}</td>
                                 <td class="siaf-table-td whitespace-nowrap">{{ g.generica }}</td>
-                                <td class="siaf-table-td whitespace-nowrap text-right">{{ g.m2027 }}</td>
-                                <td class="siaf-table-td whitespace-nowrap text-right">{{ g.m2028 }}</td>
-                                <td class="siaf-table-td whitespace-nowrap text-right">{{ g.m2029 }}</td>
+                                <!-- Los montos van siempre alineados a la izquierda -->
+                                <td class="siaf-table-td whitespace-nowrap">{{ g.m2027 }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ g.m2028 }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ g.m2029 }}</td>
                               </tr>
                             }
                             <tr class="siaf-table-row font-bold">
                               <td class="siaf-table-td whitespace-nowrap text-right" colspan="6">Total</td>
-                              <td class="siaf-table-td whitespace-nowrap text-right">{{ gastosTotales.m2027 }}</td>
-                              <td class="siaf-table-td whitespace-nowrap text-right">{{ gastosTotales.m2028 }}</td>
-                              <td class="siaf-table-td whitespace-nowrap text-right">{{ gastosTotales.m2029 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2027 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2028 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2029 }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    } @else if (usaGrillaAnexo1()) {
+                      <!-- Grilla de Anexo 1: clasificadores institucional/fuente/objeto con códigos, años y fila TOTAL -->
+                      <div class="siaf-table-shell">
+                        <table class="siaf-table min-w-[1800px]">
+                          <thead>
+                            <tr class="siaf-table-head-row">
+                              <th class="siaf-table-th whitespace-nowrap text-center" colspan="3">Clasificador institucional</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador fuente de financiamiento</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" rowspan="2">Categoría del gasto</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador objeto del gasto</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="3">Asignación presupuestaria</th>
+                            </tr>
+                            <tr class="siaf-table-head-row">
+                              <th class="siaf-table-th whitespace-nowrap text-center">Código</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Entidad / Pliego</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Unidad ejecutora</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Código</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Fuente de financiamiento</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Código</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Objeto del gasto</th>
+                              <!-- Solo la cabecera de los años va centrada; los montos quedan a la izquierda -->
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2027</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2028</th>
+                              <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2029</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (a of anexo1FilasPagina(); track $index) {
+                              <tr class="siaf-table-row">
+                                <td class="siaf-table-td">
+                                  <span class="inline-flex items-center gap-siaf-xs whitespace-nowrap">
+                                    {{ a.codigo }}
+                                    @if (a.errada) {
+                                      <siaf-icon name="error" [size]="18" class="text-[var(--sys-color-text-feedback-danger)]" ariaLabel="Registro erróneo" />
+                                    }
+                                  </span>
+                                </td>
+                                <td class="siaf-table-td min-w-[220px]">{{ a.entidad }}</td>
+                                <td class="siaf-table-td min-w-[260px]">{{ a.unidadEjecutora }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.codigoFuente }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.fuente }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.categoria }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.codigoObjeto }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.objeto }}</td>
+                                <!-- Los montos van siempre alineados a la izquierda -->
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.m2027 }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.m2028 }}</td>
+                                <td class="siaf-table-td whitespace-nowrap">{{ a.m2029 }}</td>
+                              </tr>
+                            }
+                            <tr class="siaf-table-row font-bold">
+                              <td class="siaf-table-td whitespace-nowrap text-right" colspan="8">Total</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2027 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2028 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2029 }}</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     } @else if (seccion() === 'pie') {
-                      <!-- Grilla de Pie de página: descripción + monto -->
+                      <!-- Grilla de Pie de página: Pliego + Texto nota + Monto -->
                       <div class="siaf-table-shell">
-                        <table class="siaf-table min-w-[720px]">
+                        <table class="siaf-table min-w-[900px]">
                           <thead>
                             <tr class="siaf-table-head-row">
-                              <th class="siaf-table-th">Pie de página</th>
-                              <th class="siaf-table-th whitespace-nowrap">Monto</th>
+                              <th class="siaf-table-th whitespace-nowrap">Pliego</th>
+                              <th class="siaf-table-th whitespace-nowrap border-l border-[var(--sys-color-divider-default)]">Texto nota</th>
+                              <th class="siaf-table-th whitespace-nowrap border-l border-[var(--sys-color-divider-default)]">Monto</th>
                             </tr>
                           </thead>
                           <tbody>
-                            @for (p of piePaginaFilas(); track $index) {
+                            @for (p of piePaginaFilasPagina(); track $index) {
                               <tr class="siaf-table-row">
-                                <td class="siaf-table-td">
+                                <td class="siaf-table-td min-w-[220px] align-top">
                                   <span class="flex items-start gap-siaf-xs">
                                     @if (p.errada) {
                                       <siaf-icon name="error" [size]="18" class="mt-[2px] shrink-0 text-[var(--sys-color-text-feedback-danger)]" ariaLabel="Registro erróneo" />
                                     }
-                                    <span>{{ p.descripcion }}</span>
+                                    <span>{{ p.pliego }}</span>
                                   </span>
                                 </td>
+                                <td class="siaf-table-td min-w-[360px] align-top">{{ p.texto }}</td>
+                                <!-- El monto va alineado a la izquierda -->
                                 <td class="siaf-table-td whitespace-nowrap align-top">{{ p.monto }}</td>
                               </tr>
                             }
@@ -316,13 +415,28 @@ interface PiePaginaApm {
                         </table>
                       </div>
                     } @else {
-                      <siaf-table [columns]="columnasCadenas" [rows]="cadenasRows()" idKey="linea" />
+                      <siaf-table [columns]="columnasCadenas" [rows]="cadenasRowsPagina()" idKey="linea" />
                     }
+
+                    <!-- Paginado de la grilla -->
+                    <siaf-pagination
+                      position="Bottom"
+                      [rowPage]="true"
+                      [page]="pagina()"
+                      [pageSize]="filasPorPagina()"
+                      [rowsPerPage]="filasPorPagina()"
+                      [rowsPerPageOptions]="opcionesFilasPorPagina"
+                      [totalItems]="totalFilasVista()"
+                      [totalPages]="totalPaginas()"
+                      (previous)="paginaAnterior()"
+                      (next)="paginaSiguiente()"
+                      (rowsPerPageChange)="cambiarFilasPorPagina($event)"
+                    />
 
                     <!-- Detalle -->
                     <div class="flex flex-col gap-siaf-sm">
                       <h3 class="m-0 text-sm font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)]">Detalle</h3>
-                      <dl class="m-0 grid grid-cols-2 gap-siaf-md sm:grid-cols-4">
+                      <dl class="m-0 grid grid-cols-2 gap-siaf-md sm:grid-cols-3 lg:grid-cols-6">
                         <div class="flex flex-col gap-siaf-xxs">
                           <dt class="text-xs text-[var(--sys-color-text-neutral-medium)]">Registros erróneos</dt>
                           <dd class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ detalle().erroneos }} Items</dd>
@@ -338,6 +452,14 @@ interface PiePaginaApm {
                         <div class="flex flex-col gap-siaf-xxs">
                           <dt class="text-xs text-[var(--sys-color-text-neutral-medium)]">Estado</dt>
                           <dd class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ estado === 'fallido' ? 'Fallido' : 'Procesado' }}</dd>
+                        </div>
+                        <div class="flex flex-col gap-siaf-xxs">
+                          <dt class="text-xs text-[var(--sys-color-text-neutral-medium)]">Importador por</dt>
+                          <dd class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ detalleImportacion().por }}</dd>
+                        </div>
+                        <div class="flex flex-col gap-siaf-xxs">
+                          <dt class="text-xs text-[var(--sys-color-text-neutral-medium)]">Fecha y hora de importación</dt>
+                          <dd class="m-0 text-sm font-bold text-[var(--sys-color-text-neutral-high)]">{{ detalleImportacion().en }}</dd>
                         </div>
                       </dl>
                     </div>
@@ -459,6 +581,8 @@ interface PiePaginaApm {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GeneracionReporteApmComponent {
+  private readonly currentUser = inject(CurrentUserService);
+
   readonly breadcrumbs: BreadcrumbItem[] = buildProcessBreadcrumbs(PROCESS_ID, PROCESS_ROUTE, PROCESO_NOMBRE);
 
   // ── Versión activa (datos de ejemplo mientras no hay backend) ──
@@ -466,6 +590,8 @@ export class GeneracionReporteApmComponent {
     { label: 'Año', value: '2026' },
     { label: 'Código', value: '1' },
     { label: 'Nombre', value: 'Versión Nro 1' },
+    { label: 'Editable', value: 'Sí' },
+    { label: 'Es oficial', value: 'No' },
   ];
 
   // ── Pestañas del flujo ──
@@ -485,8 +611,11 @@ export class GeneracionReporteApmComponent {
   ];
   readonly seccion = signal('gastos');
 
-  /** Secciones que usan la grilla completa (Línea, clasificadores, años y TOTAL). Gastos y Anexo 1 comparten formato. */
-  readonly usaGrillaCompleta = computed(() => this.seccion() === 'gastos' || this.seccion() === 'anexo-1');
+  /** Gastos: grilla completa con «Línea», clasificadores, años y TOTAL. */
+  readonly usaGrillaCompleta = computed(() => this.seccion() === 'gastos');
+
+  /** Anexo 1 y Anexo 2: comparten la misma grilla (Código, Entidad/Pliego, Unidad Ejecutora, clasificadores, Objeto del gasto y años). */
+  readonly usaGrillaAnexo1 = computed(() => this.seccion() === 'anexo-1' || this.seccion() === 'anexo-2');
 
   /** Sección elegida en el menú lateral de la pestaña «Pendientes». */
   readonly seccionPendiente = signal('gastos');
@@ -497,6 +626,12 @@ export class GeneracionReporteApmComponent {
 
   /** Panel «Carga masiva» abierto. */
   readonly cargaPanelAbierto = signal(false);
+
+  // ── Buscador y paginado de la grilla de resultado ──
+  readonly busqueda = signal('');
+  readonly pagina = signal(1);
+  readonly filasPorPagina = signal(10);
+  readonly opcionesFilasPorPagina = [10, 25, 50, 100];
 
   /** Archivos cargados por sección. */
   private readonly archivos = signal<Record<string, ArchivoApm[]>>({});
@@ -586,24 +721,58 @@ export class GeneracionReporteApmComponent {
     }));
   });
 
+  // ── Grilla de Anexo 1 (datos de ejemplo, tal como llega el archivo) ──
+  private readonly ANEXO1_ENTIDAD = 'MINISTERIO DE VIVIENDA, CONSTRUCCIÓN Y SANEAMIENTO';
+  private readonly ANEXO1_UNIDAD = 'MINISTERIO DE VIVIENDA, CONSTRUCCIÓN Y SANEAMIENTO - ADMINISTRACIÓN GENERAL';
+  private readonly ANEXO1_BASE: ReadonlyArray<Pick<AnexoApm, 'codigoObjeto' | 'objeto' | 'm2027' | 'm2028' | 'm2029'>> = [
+    { codigoObjeto: '01.09', objeto: 'Gastos variables y ocasionales', m2027: 'S/ 880,200.00', m2028: 'S/ 880,200.00', m2029: 'S/ 880,200.00' },
+    { codigoObjeto: '01.01', objeto: 'Personal administrativo', m2027: 'S/ 4,619,888.00', m2028: 'S/ 4,257,982.00', m2029: 'S/ 4,251,982.00' },
+    { codigoObjeto: '01.13', objeto: 'Contrato administrativo de servicios', m2027: 'S/ 9,021,633.00', m2028: 'S/ 9,021,633.00', m2029: 'S/ 9,021,633.00' },
+    { codigoObjeto: '02.01', objeto: 'Retribuciones en bienes o servicios', m2027: 'S/ 336,751.00', m2028: 'S/ 336,751.00', m2029: 'S/ 336,751.00' },
+    { codigoObjeto: '03.01', objeto: 'Obligaciones del empleador', m2027: 'S/ 2,871,029.00', m2028: 'S/ 2,871,029.00', m2029: 'S/ 2,871,029.00' },
+  ];
+
+  /** Totales por año de la sección Anexo 1 (tal como llega en el archivo de ejemplo). */
+  readonly anexo1Totales = { m2027: 'S/ 17,729,501.00', m2028: 'S/ 17,367,595.00', m2029: 'S/ 17,361,595.00' };
+
+  /** Filas de Anexo 1 con la marca de error (ícono rojo) cuando la sección queda Fallida. */
+  readonly anexo1Filas = computed<AnexoApm[]>(() => {
+    const fallido = this.estadoProceso() === 'fallido';
+    return this.ANEXO1_BASE.map((a, i) => ({
+      codigo: '001',
+      errada: fallido && this.FILAS_ERRONEAS.includes(i),
+      entidad: this.ANEXO1_ENTIDAD,
+      unidadEjecutora: this.ANEXO1_UNIDAD,
+      codigoFuente: '1',
+      fuente: 'Recursos ordinarios',
+      categoria: '5. Gastos corrientes',
+      codigoObjeto: a.codigoObjeto,
+      objeto: a.objeto,
+      m2027: a.m2027,
+      m2028: a.m2028,
+      m2029: a.m2029,
+    }));
+  });
+
   // ── Grilla de Pie de página (datos de ejemplo) ──
-  private readonly PIE_DESCRIPCION =
+  private readonly PIE_TEXTO =
     'Considera la asignación, para el año 2026, en la genérica de gasto 2.6 Adquisición de Activos No ' +
     'Financieros, del programa de endeudamiento CREACIÓN DE UN SISTEMA DE ATENCIÓN DE EMERGENCIAS, ' +
     'URGENCIAS E INFORMACIÓN MEDIANTE UN NÚMERO ÚNICO 911 EN LIMA METROPOLITANA Y CALLAO.';
+  private readonly PIE_PLIEGO = '001 - MINISTERIO DE VIVIENDA, CONSTRUCCIÓN Y SANEAMIENTO';
 
-  private readonly PIE_BASE: ReadonlyArray<Omit<PiePaginaApm, 'errada'>> = [
-    { descripcion: this.PIE_DESCRIPCION, monto: 'S/ 30,777,777.00' },
-    { descripcion: this.PIE_DESCRIPCION, monto: 'S/ 12,500,000.00' },
-    { descripcion: this.PIE_DESCRIPCION, monto: 'S/ 8,340,120.00' },
-    { descripcion: this.PIE_DESCRIPCION, monto: 'S/ 5,120,000.00' },
-    { descripcion: this.PIE_DESCRIPCION, monto: 'S/ 2,000,000.00' },
+  private readonly PIE_BASE: ReadonlyArray<Pick<PiePaginaApm, 'texto' | 'monto'>> = [
+    { texto: this.PIE_TEXTO, monto: 'S/ 30,777,777.00' },
+    { texto: this.PIE_TEXTO, monto: 'S/ 12,500,000.00' },
+    { texto: this.PIE_TEXTO, monto: 'S/ 8,340,120.00' },
+    { texto: this.PIE_TEXTO, monto: 'S/ 5,120,000.00' },
+    { texto: this.PIE_TEXTO, monto: 'S/ 2,000,000.00' },
   ];
 
   /** Filas de Pie de página con la marca de error (ícono rojo) cuando la sección queda Fallida. */
   readonly piePaginaFilas = computed<PiePaginaApm[]>(() => {
     const fallido = this.estadoProceso() === 'fallido';
-    return this.PIE_BASE.map((p, i) => ({ ...p, errada: fallido && this.FILAS_ERRONEAS.includes(i) }));
+    return this.PIE_BASE.map((p, i) => ({ pliego: this.PIE_PLIEGO, ...p, errada: fallido && this.FILAS_ERRONEAS.includes(i) }));
   });
 
   readonly detalle = computed(() => {
@@ -611,6 +780,79 @@ export class GeneracionReporteApmComponent {
     const erroneos = this.estadoProceso() === 'fallido' ? this.FILAS_ERRONEAS.length : 0;
     return { total, erroneos, correctos: total - erroneos };
   });
+
+  /** Importador y fecha/hora del archivo abierto, para la sección Detalle. */
+  readonly detalleImportacion = computed(() => {
+    const a = this.archivoActivo();
+    return { por: a?.importadoPor ?? '—', en: a?.importadoEn ?? '—' };
+  });
+
+  // ── Filtro (buscador) + paginado por sección ──
+  private coincide(valores: unknown[], texto: string): boolean {
+    const q = texto.trim().toLowerCase();
+    if (!q) return true;
+    return valores.some((v) => String(v ?? '').toLowerCase().includes(q));
+  }
+
+  private paginar<T>(filas: T[]): T[] {
+    const size = this.filasPorPagina();
+    const inicio = (this.pagina() - 1) * size;
+    return filas.slice(inicio, inicio + size);
+  }
+
+  /** Gastos/Anexo filtrados por el buscador (sin paginar: alimenta el total). */
+  private readonly gastosFiltradas = computed<GastoApm[]>(() =>
+    this.gastosFilas().filter((g) =>
+      this.coincide([g.linea, g.entidad, g.fuente, g.subfuente, g.categoria, g.generica, g.m2027, g.m2028, g.m2029], this.busqueda()),
+    ),
+  );
+  readonly gastosFilasPagina = computed<GastoApm[]>(() => this.paginar(this.gastosFiltradas()));
+
+  private readonly anexo1Filtradas = computed<AnexoApm[]>(() =>
+    this.anexo1Filas().filter((a) =>
+      this.coincide([a.codigo, a.entidad, a.unidadEjecutora, a.codigoFuente, a.fuente, a.categoria, a.codigoObjeto, a.objeto, a.m2027, a.m2028, a.m2029], this.busqueda()),
+    ),
+  );
+  readonly anexo1FilasPagina = computed<AnexoApm[]>(() => this.paginar(this.anexo1Filtradas()));
+
+  private readonly pieFiltradas = computed<PiePaginaApm[]>(() =>
+    this.piePaginaFilas().filter((p) => this.coincide([p.pliego, p.texto, p.monto], this.busqueda())),
+  );
+  readonly piePaginaFilasPagina = computed<PiePaginaApm[]>(() => this.paginar(this.pieFiltradas()));
+
+  private readonly cadenasFiltradas = computed<DataTableRow[]>(() =>
+    this.cadenasRows().filter((r) => this.coincide(Object.values(r), this.busqueda())),
+  );
+  readonly cadenasRowsPagina = computed<DataTableRow[]>(() => this.paginar(this.cadenasFiltradas()));
+
+  /** Total de filas de la sección activa tras filtrar (para el paginado). */
+  readonly totalFilasVista = computed(() => {
+    if (this.usaGrillaCompleta()) return this.gastosFiltradas().length;
+    if (this.usaGrillaAnexo1()) return this.anexo1Filtradas().length;
+    if (this.seccion() === 'pie') return this.pieFiltradas().length;
+    return this.cadenasFiltradas().length;
+  });
+
+  readonly totalPaginas = computed(() => Math.max(1, Math.ceil(this.totalFilasVista() / this.filasPorPagina())));
+
+  /** Escribir en el buscador reinicia a la primera página. */
+  onBuscar(valor: string): void {
+    this.busqueda.set(valor);
+    this.pagina.set(1);
+  }
+
+  paginaAnterior(): void {
+    this.pagina.update((p) => Math.max(1, p - 1));
+  }
+
+  paginaSiguiente(): void {
+    this.pagina.update((p) => Math.min(this.totalPaginas(), p + 1));
+  }
+
+  cambiarFilasPorPagina(n: number): void {
+    this.filasPorPagina.set(n);
+    this.pagina.set(1);
+  }
 
   readonly descripcionBanner = computed(
     () =>
@@ -668,11 +910,12 @@ export class GeneracionReporteApmComponent {
 
   onCargaConfirmada(archivos: File[]): void {
     const seccionId = this.seccion();
+    const importadoPor = this.currentUser.name;
     for (const archivo of archivos) {
       const orden = (this.cargasPorSeccion[seccionId] ?? 0) + 1;
       this.cargasPorSeccion[seccionId] = orden;
       const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      this.agregar(seccionId, { id, nombre: archivo.name, estado: 'validando' });
+      this.agregar(seccionId, { id, nombre: archivo.name, estado: 'validando', importadoPor, importadoEn: this.ahora() });
       // Prueba de la DEMO: el 2.º archivo que se carga en la sección queda con error.
       this.validarEstructura(seccionId, id, orden === 2);
     }
@@ -683,6 +926,15 @@ export class GeneracionReporteApmComponent {
   abrirSeccion(id: string): void {
     this.seccion.set(id);
     this.archivoAbierto.set(null);
+    this.busqueda.set('');
+    this.pagina.set(1);
+  }
+
+  /** Abre el resultado de un archivo y reinicia el buscador y el paginado. */
+  abrirArchivo(id: string): void {
+    this.archivoAbierto.set(id);
+    this.busqueda.set('');
+    this.pagina.set(1);
   }
 
   quitarArchivo(id: string): void {

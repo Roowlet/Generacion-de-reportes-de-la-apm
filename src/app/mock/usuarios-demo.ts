@@ -3,7 +3,7 @@ import type { PerfilItem } from '../core/api/auth-api.service';
 /**
  * Usuarios de demostración del taller. Entran con su DNI y la contraseña común.
  *
- * - Juan (configurador) administra catálogos y tipos de documento del proceso.
+ * - Juan (creador) administra catálogos y tipos de documento del proceso.
  * - Luis (aprobador) aprueba, observa o rechaza lo verificado.
  * - Carla tiene los dos perfiles: sirve para mostrar el cambio de perfil desde el menú del usuario.
  *
@@ -53,8 +53,8 @@ export const USUARIOS_DEMO: UsuarioDemo[] = [
     nombres: 'Juan Doe',
     apellidoPaterno: 'Perez',
     apellidoMaterno: 'Perez',
-    descripcion: 'Configurador: administra catálogos y tipos de documento',
-    perfiles: [perfil('perfil-juan-configurador', 'CONFIGURADOR', 'Configurador', 'Configurador del proceso')],
+    descripcion: 'Creador: administra catálogos y tipos de documento',
+    perfiles: [perfil('perfil-juan-configurador', 'CONFIGURADOR', 'Creador', 'Creador del proceso')],
   },
   {
     id: 'usr-luis',

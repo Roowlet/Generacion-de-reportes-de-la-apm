@@ -65,7 +65,7 @@ export type RoleRouteData = {
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   creator: 'Creador',
-  configurator: 'Configurador',
+  configurator: 'Creador',
   reviewer: 'Revisor',
   approver: 'Aprobador',
   admin_sistema: 'Administrador del Sistema',

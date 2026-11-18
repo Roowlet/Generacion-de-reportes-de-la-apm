@@ -41,6 +41,8 @@ export interface UploadItem {
  *   si todavía tiene archivo.
  * - Con el `accept` y el `maxSizeMb` de cada caso (.pdf para el sustento, .xlsx para las cargas masivas): también
  *   valida lo que se suelta.
+ * - Con `[retryable]="false"` cuando la tarjeta solo debe ofrecer la × (sin «Reintentar»), como en la carga masiva
+ *   de «Generación de reporte APM».
  * @evitar
  * - Para mostrar un archivo ya adjunto o guardado: usar `siaf-uploaded-file-card`.
  * - Para el flujo de adjuntar en una solicitud: usar `siaf-upload-side-nav`, que ya trae título, Aceptar y Cancelar.
@@ -175,10 +177,11 @@ export interface UploadItem {
               <button class="inline-flex size-6 items-center justify-center rounded-siaf-sm transition hover:bg-surface-muted" type="button" aria-label="Pausar" (click)="pauseItem(item)">
                 <siaf-icon name="pause_circle" [size]="24" class="text-text-muted" />
               </button>
-            } @else if (!item.error) {
+            } @else if (!item.error && retryable) {
               <!-- Sin botón de reintentar cuando el archivo fue rechazado por
                    validación: reintentar el mismo archivo inválido nunca va a
-                   funcionar (hay que elegir otro). -->
+                   funcionar (hay que elegir otro). Tampoco con [retryable]="false"
+                   (p. ej. la carga masiva de APM, que solo deja quitar con la ×). -->
               <button class="inline-flex size-6 items-center justify-center rounded-siaf-sm transition hover:bg-surface-muted" type="button" aria-label="Reintentar" (click)="retryItem(item)">
                 <siaf-icon
                   name="repeat"
@@ -220,6 +223,12 @@ export class UploaderComponent implements OnDestroy {
   @Input() hint = 'Se permiten archivos de 10 MB como máximo';
   @Input() maxSizeMb = 10;
   @Input() multiple = false;
+  /**
+   * Muestra el botón «Reintentar» en las tarjetas (archivos cargados o fallidos
+   * por red). Con `false` la tarjeta solo ofrece la × para quitar el archivo
+   * (lo usa la carga masiva de APM, donde reintentar no aplica).
+   */
+  @Input() retryable = true;
 
   @Output() fileSelected = new EventEmitter<File>();
   @Output() allDone = new EventEmitter<File[]>();

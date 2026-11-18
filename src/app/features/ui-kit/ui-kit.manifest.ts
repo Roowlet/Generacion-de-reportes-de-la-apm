@@ -15364,6 +15364,13 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       },
       {
+        "nombre": "retryable",
+        "tipo": "boolean",
+        "porDefecto": "true",
+        "requerida": false,
+        "descripcion": "Muestra el botón «Reintentar» en las tarjetas (archivos cargados o fallidos por red). Con `false` la tarjeta solo ofrece la × para quitar el archivo (lo usa la carga masiva de APM, donde reintentar no aplica)."
+      },
+      {
         "nombre": "variant",
         "tipo": "'compact' | 'extended'",
         "porDefecto": "'extended'",
@@ -15388,7 +15395,7 @@ export const MANIFIESTO_UI_KIT: readonly FichaComponente[] = [
         "descripcion": null
       }
     ],
-    "usar": "- Dentro de `siaf-upload-side-nav`, el panel que abren las solicitudes para adjuntar el sustento .pdf: es su uso\n  normal.\n- Suelto solo para una carga embebida en la página; `compact` (una fila de 48 px) cuando el formulario tiene poco alto,\n  como el sustento de `siaf-annulment-modal`.\n- `fileSelected` cuando un archivo termina de cargar y `fileRemoved` cuando se quita con su ×, para que el padre sepa\n  si todavía tiene archivo.\n- Con el `accept` y el `maxSizeMb` de cada caso (.pdf para el sustento, .xlsx para las cargas masivas): también\n  valida lo que se suelta.",
+    "usar": "- Dentro de `siaf-upload-side-nav`, el panel que abren las solicitudes para adjuntar el sustento .pdf: es su uso\n  normal.\n- Suelto solo para una carga embebida en la página; `compact` (una fila de 48 px) cuando el formulario tiene poco alto,\n  como el sustento de `siaf-annulment-modal`.\n- `fileSelected` cuando un archivo termina de cargar y `fileRemoved` cuando se quita con su ×, para que el padre sepa\n  si todavía tiene archivo.\n- Con el `accept` y el `maxSizeMb` de cada caso (.pdf para el sustento, .xlsx para las cargas masivas): también\n  valida lo que se suelta.\n- Con `[retryable]=\"false\"` cuando la tarjeta solo debe ofrecer la × (sin «Reintentar»), como en la carga masiva\n  de «Generación de reporte APM».",
     "evitar": "- Para mostrar un archivo ya adjunto o guardado: usar `siaf-uploaded-file-card`.\n- Para el flujo de adjuntar en una solicitud: usar `siaf-upload-side-nav`, que ya trae título, Aceptar y Cancelar.\n- Para mostrar el avance real de una subida al servidor: el progreso es simulado con un temporizador.",
     "teclado": "- **Tab**: enfoca el selector de archivos (el `input type=\"file\"` oculto dentro de «elige archivo» o «Elegir\n  archivo») y después los botones de cada tarjeta (Pausar, Reintentar, Cancelar).\n- **Enter / Espacio**: en el selector abren el diálogo de archivos del sistema; en los botones, ejecutan la acción.",
     "accesibilidad": "- **2.1.1 Teclado (A)**: soltar archivos es opcional; el `input type=\"file\"` nativo permite elegirlos con teclado.\n- **2.4.7 Foco visible (AA)**: el `input type=\"file\"` va oculto con `sr-only`, así que «elige archivo» (`extended`)\n  y «Elegir archivo» (`compact`) pintan un contorno azul de 2 px (`border-states-focus`, 5.35:1 claro / 10.15:1\n  oscuro) cuando el selector recibe el foco con teclado. Los botones de las tarjetas conservan el anillo nativo.\n- **Pendiente · 4.1.3 Mensajes de estado (AA)**: ni el progreso, ni la carga terminada, ni el motivo de un rechazo se\n  anuncian: no hay `role=\"status\"`, `role=\"alert\"` ni `aria-live`, y la barra es un `div` sin `role=\"progressbar\"`.\n- **3.3.1 Identificación de errores (A)**: un archivo de tipo o tamaño inválido queda en una tarjeta roja con el\n  motivo en texto («Solo se admiten archivos .pdf»).\n- **Pendiente · 3.3.2 Etiquetas o instrucciones (A)**: la ayuda (`hint`) no se asocia al selector y `compact` no la\n  muestra.\n- **4.1.2 Nombre, función y valor (A)**: el selector se nombra con el texto de su `label`; los botones de cada\n  tarjeta tienen `aria-label` (Pausar, Reintentar, Cancelar) y los íconos son decorativos.\n- **Pendiente · 1.4.3 Contraste mínimo (AA)**: «elige archivo» usa la clase `text-brand-primary`, que pinta con\n  `bg-brand-primary`: 8.79:1 en claro, pero 2.66:1 en oscuro. El resto cumple: texto `text-neutral-high` 16.29:1,\n  ayuda y peso `text-neutral-low` 5.01:1 y error `text-feedback-danger` 9.84:1.\n- **2.5.8 Tamaño del objetivo (AA)**: los botones de las tarjetas miden 24 × 24 px (`size-6`).",

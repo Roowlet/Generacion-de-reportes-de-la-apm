@@ -149,19 +149,21 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
     ],
   },
   {
-    // Oculto del menú (en el escritorio virtual solo se ve «Procesos presupuesto»),
-    // pero conservado en el árbol: sus hojas implementadas (catálogo de subtipo de
-    // acción y modificación de la APM) siguen resolviendo migas de pan y Crear documento.
+    // Visible en el menú como nombre de primer nivel «Próximamente» (así lo
+    // muestra el diseño de Figma), pero sin desplegar contenido: su subárbol
+    // («Catálogos») va oculto (`hiddenInMenu`) para que las hojas ya
+    // implementadas (catálogo de subtipo de acción y modificación de la APM)
+    // sigan resolviendo migas de pan y Crear documento, accesibles solo por URL.
     id: 'clasificadores-catalogos',
     label: 'Clasificadores y catálogos',
     comingSoon: true,
-    hiddenInMenu: true,
     children: [
-      { id: 'clasificadores', label: 'Clasificadores', comingSoon: true, expandable: true },
+      { id: 'clasificadores', label: 'Clasificadores', comingSoon: true, expandable: true, hiddenInMenu: true },
       {
         id: 'catalogos',
         label: 'Catálogos',
         comingSoon: true,
+        hiddenInMenu: true,
         children: [
           {
             id: 'gestion-asignacion-presupuestaria-multianual',
@@ -206,12 +208,12 @@ export const DEFAULT_PROCESS_TREE: ProcessMenuNode[] = [
     ],
   },
   {
-    // Oculto del menú: en el escritorio virtual solo se ve «Procesos presupuesto».
+    // Visible como nombre de primer nivel «Próximamente» (así lo muestra el
+    // diseño de Figma). No tiene contenido definido: solo expone la flecha.
     id: 'consultas-reportes',
     label: 'Consultas y reportes',
     comingSoon: true,
     expandable: true,
-    hiddenInMenu: true,
   },
 ];
 
