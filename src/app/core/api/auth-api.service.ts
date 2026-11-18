@@ -37,6 +37,9 @@ export interface PerfilItem {
   rol: string;
   rolCodigo: string;
 
+  /** Nombre completo del usuario dueño del perfil (ej. "Juan Doe Perez Perez"). */
+  usuarioNombre?: string;
+
   /**
    * Permisos efectivos del rol (códigos como 'document.read'), provistos por
    * el backend desde SegRolPermiso. Fuente única del gating de UI; si falta

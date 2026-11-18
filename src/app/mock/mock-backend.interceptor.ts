@@ -94,9 +94,15 @@ function rolDe(perfil: PerfilItem): { codigo: string; nombre: string } {
 
 // ─── Autenticación ─────────────────────────────────────────────────
 
+/** Agrega el nombre completo del usuario a su perfil (para mostrarlo en la barra y la trazabilidad). */
+function conNombreUsuario(usuario: UsuarioDemo, perfil: PerfilItem): PerfilItem {
+  return { ...perfil, usuarioNombre: nombreCompleto(usuario) };
+}
+
 function respuestaLogin(usuario: UsuarioDemo): LoginResponse {
-  const perfilActivo = usuario.perfiles[0];
-  return { accessToken: firmarToken(usuario, perfilActivo), debeCambiarPassword: false, perfilActivo, perfilesDisponibles: usuario.perfiles };
+  const perfiles = usuario.perfiles.map((p) => conNombreUsuario(usuario, p));
+  const perfilActivo = perfiles[0];
+  return { accessToken: firmarToken(usuario, perfilActivo), debeCambiarPassword: false, perfilActivo, perfilesDisponibles: perfiles };
 }
 
 const login: Manejador = ({ req }) => {
@@ -117,7 +123,8 @@ const cambiarPerfil: Manejador = ({ req, sesion }) => {
   const { perfilId } = (req.body ?? {}) as { perfilId?: string };
   const perfil = sesion.usuario.perfiles.find((p) => p.id === perfilId);
   if (!perfil) return error(404, 'El perfil no pertenece al usuario.');
-  const respuesta: CambiarPerfilResponse = { accessToken: firmarToken(sesion.usuario, perfil), perfilActivo: perfil };
+  const perfilActivo = conNombreUsuario(sesion.usuario, perfil);
+  const respuesta: CambiarPerfilResponse = { accessToken: firmarToken(sesion.usuario, perfilActivo), perfilActivo };
   return ok(respuesta);
 };
 
