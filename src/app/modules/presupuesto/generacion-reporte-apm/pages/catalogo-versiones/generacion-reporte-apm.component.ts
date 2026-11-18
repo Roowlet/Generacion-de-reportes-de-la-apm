@@ -12,8 +12,11 @@ import { EmptyStateComponent } from '../../../../../shared/ui/empty-state/empty-
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
 import { MessageBoxComponent } from '../../../../../shared/ui/message-box/message-box.component';
+import { ModalComponent } from '../../../../../shared/ui/modal/modal.component';
+import { SnackbarComponent } from '../../../../../shared/ui/snackbar/snackbar.component';
 import { TableComponent } from '../../../../../shared/ui/table/table.component';
 import { TabItem, TabsComponent } from '../../../../../shared/ui/tabs/tabs.component';
+import { TooltipDirective } from '../../../../../shared/ui/tooltip/tooltip.directive';
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { PROCESO_NOMBRE, PROCESS_ID, PROCESS_ROUTE } from '../../config/generacion-reporte-apm.rutas';
 import { ApmCargaMasivaSideNavComponent } from './carga-masiva-side-nav.component';
@@ -113,6 +116,9 @@ interface PiePaginaApm {
     FormTableSearchComponent,
     PaginationComponent,
     EmptyStateComponent,
+    ModalComponent,
+    SnackbarComponent,
+    TooltipDirective,
     ApmCargaMasivaSideNavComponent,
     ApmConfiguracionVersionesSideNavComponent,
   ],
@@ -131,6 +137,15 @@ interface PiePaginaApm {
       </div>
 
       <div class="flex min-h-0 flex-1 flex-col gap-siaf-md overflow-y-auto">
+        <!-- Aviso de generación en curso (solo en Procesados, mientras se genera el reporte) -->
+        @if (tabPrincipal() === 'procesados' && generandoReporte()) {
+          <siaf-alert
+            tone="info"
+            title="Generando Reporte"
+            description="El proceso se ejecuta en segundo plano, te notificaremos al terminar."
+          />
+        }
+
         <!-- Tarjeta de la versión activa (en las tres pestañas) -->
         <section class="flex flex-col gap-siaf-sm">
           <h2 class="m-0 text-base font-bold text-[var(--sys-color-text-neutral-high)]">VERSIÓN</h2>
@@ -574,7 +589,14 @@ interface PiePaginaApm {
                     <h2 class="m-0 text-base font-bold uppercase tracking-[0.02px] text-[var(--sys-color-text-neutral-high)]">
                       Registro de estructura de {{ nombreSeccionProcesado() }}
                     </h2>
-                    <siaf-button variant="accent" size="md" icon="picture_as_pdf" (click)="generarPdf()">Generar PDF</siaf-button>
+                    <siaf-button
+                      variant="accent"
+                      size="md"
+                      icon="check_circle"
+                      [disabled]="generandoReporte()"
+                      [siafTooltip]="generandoReporte() ? 'No disponible mientras se genera un reporte' : ''"
+                      (click)="abrirModalGenerarReporte()"
+                    >Generar Reporte</siaf-button>
                   </header>
                   @if (hayProcesadosSeccion()) {
                   @if (usaGrillaCompletaProcesado()) {
@@ -722,6 +744,27 @@ interface PiePaginaApm {
         (closed)="configPanelAbierto.set(false)"
         (aplicada)="onCopiarVersion($event)"
       />
+
+      <!-- Modal de confirmación «¿Generar reporte?»: lo abre el botón de la cabecera de Procesados -->
+      <siaf-modal
+        [open]="modalGenerarAbierto()"
+        title="¿Generar reporte?"
+        description="El reporte será generado."
+        (canceled)="modalGenerarAbierto.set(false)"
+        (confirmed)="confirmarGenerarReporte()"
+      />
+
+      <!-- Aviso flotante: el reporte se puso en cola -->
+      <div class="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-siaf-md">
+        <div class="pointer-events-auto">
+          <siaf-snackbar
+            [open]="snackbarGenerarAbierto()"
+            tone="info"
+            message="Generación de reporte iniciada."
+            (closed)="snackbarGenerarAbierto.set(false)"
+          />
+        </div>
+      </div>
     </siaf-page-shell>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -1083,9 +1126,34 @@ export class GeneracionReporteApmComponent {
   /** Filas de Pie de página procesadas (mismos datos de ejemplo que Importación, sin marca de error). */
   readonly pieProcesados: PiePaginaApm[] = this.PIE_BASE.map((p) => ({ pliego: this.PIE_PLIEGO, ...p, errada: false }));
 
-  /** Pendiente: generar el PDF del reporte procesado. */
-  generarPdf(): void {
-    // Placeholder hasta conectar la generación real del PDF.
+  // ── Generación de reporte (Procesados) ──
+
+  /** Modal de confirmación «¿Generar reporte?» abierto. */
+  readonly modalGenerarAbierto = signal(false);
+
+  /** Snackbar «Generación de reporte iniciada.» visible. */
+  readonly snackbarGenerarAbierto = signal(false);
+
+  /**
+   * El reporte se está generando: deshabilita el botón, muestra el banner «Generando Reporte»
+   * y activa el tooltip. Como no hay backend, queda en este estado hasta recargar la pantalla.
+   */
+  readonly generandoReporte = signal(false);
+
+  /** Abre el modal de confirmación al pulsar «Generar Reporte». */
+  abrirModalGenerarReporte(): void {
+    this.modalGenerarAbierto.set(true);
+  }
+
+  /**
+   * Confirma el modal: cierra el diálogo, pone el proceso «en curso» (banner + botón deshabilitado)
+   * y muestra el snackbar, que se oculta solo tras unos segundos.
+   */
+  confirmarGenerarReporte(): void {
+    this.modalGenerarAbierto.set(false);
+    this.generandoReporte.set(true);
+    this.snackbarGenerarAbierto.set(true);
+    setTimeout(() => this.snackbarGenerarAbierto.set(false), 4000);
   }
 
   /**
