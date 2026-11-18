@@ -17,6 +17,7 @@ import { TabItem, TabsComponent } from '../../../../../shared/ui/tabs/tabs.compo
 import { buildProcessBreadcrumbs } from '../../../../../shared/utils/breadcrumbs.util';
 import { PROCESO_NOMBRE, PROCESS_ID, PROCESS_ROUTE } from '../../config/generacion-reporte-apm.rutas';
 import { ApmCargaMasivaSideNavComponent } from './carga-masiva-side-nav.component';
+import { ApmConfiguracionVersionesSideNavComponent } from './configuracion-versiones-side-nav.component';
 
 /** Estado de validación de un archivo cargado en una sección de la estructura. */
 type EstadoArchivo = 'validando' | 'validado' | 'error';
@@ -113,6 +114,7 @@ interface PiePaginaApm {
     PaginationComponent,
     EmptyStateComponent,
     ApmCargaMasivaSideNavComponent,
+    ApmConfiguracionVersionesSideNavComponent,
   ],
   template: `
     <siaf-page-shell [breadcrumbs]="breadcrumbs">
@@ -145,7 +147,7 @@ interface PiePaginaApm {
                 </div>
               }
             </dl>
-            <siaf-button variant="text" size="md" [iconOnly]="true" icon="settings" ariaLabel="Configuración de la versión" />
+            <siaf-button variant="text" size="md" [iconOnly]="true" icon="settings" ariaLabel="Configuración de la versión" (click)="configPanelAbierto.set(true)" />
           </div>
         </section>
 
@@ -712,6 +714,14 @@ interface PiePaginaApm {
         (closed)="cargaPanelAbierto.set(false)"
         (confirmed)="onCargaConfirmada($event)"
       />
+
+      <!-- Panel «Configuración de versiones»: lo abre el ícono de settings de la tarjeta de versión -->
+      <siaf-apm-configuracion-versiones-side-nav
+        [open]="configPanelAbierto()"
+        [version]="version"
+        (closed)="configPanelAbierto.set(false)"
+        (aplicada)="onCopiarVersion($event)"
+      />
     </siaf-page-shell>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -762,6 +772,15 @@ export class GeneracionReporteApmComponent {
 
   /** Panel «Carga masiva» abierto. */
   readonly cargaPanelAbierto = signal(false);
+
+  /** Panel «Configuración de versiones» abierto. */
+  readonly configPanelAbierto = signal(false);
+
+  /**
+   * Versión copiada desde «Configuración de versiones» (null si no se ha copiado ninguna). Al copiar, las
+   * secciones de Procesados quedan pobladas con los datos procesados de esa versión (datos de ejemplo).
+   */
+  readonly versionCopiada = signal<string | null>(null);
 
   // ── Buscador y paginado de la grilla de resultado ──
   readonly busqueda = signal('');
@@ -1021,9 +1040,22 @@ export class GeneracionReporteApmComponent {
    * Una sección de Procesados solo muestra su grilla cuando tiene un archivo ya procesado (validado)
    * en Importación. Como los archivos viven en memoria, al recargar la web Procesados vuelve a vacío.
    */
-  readonly hayProcesadosSeccion = computed(() =>
-    (this.archivos()[this.seccionProcesado()] ?? []).some((a) => a.estado === 'validado'),
+  readonly hayProcesadosSeccion = computed(
+    () =>
+      this.versionCopiada() !== null ||
+      (this.archivos()[this.seccionProcesado()] ?? []).some((a) => a.estado === 'validado'),
   );
+
+  /**
+   * Copia los registros procesados de la versión elegida en «Configuración de versiones» a la versión
+   * actual: todas las secciones (Gastos, Anexo 1, Anexo 2 y Pie de página) quedan pobladas en Procesados.
+   * Es solo data de ejemplo: cualquier versión (2–5) trae los mismos registros. Se queda en la pestaña
+   * actual; el usuario navega a Procesados para ver el resultado.
+   */
+  onCopiarVersion(version: string): void {
+    this.versionCopiada.set(version);
+    this.configPanelAbierto.set(false);
+  }
 
   /** Filas de Gastos procesadas (mismos datos de ejemplo que Importación, sin marca de error). */
   readonly gastosProcesados: GastoApm[] = this.GASTOS_BASE.map((g, i) => ({
