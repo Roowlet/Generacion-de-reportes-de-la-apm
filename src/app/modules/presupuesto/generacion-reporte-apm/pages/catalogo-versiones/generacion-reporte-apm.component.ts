@@ -8,6 +8,7 @@ import { DataTableColumn, DataTableRow } from '../../../../../shared/components/
 import { FormTableSearchComponent } from '../../../../../shared/components/form-table-search/form-table-search.component';
 import { PaginationComponent } from '../../../../../shared/components/pagination/pagination.component';
 import { AlertComponent } from '../../../../../shared/ui/alert/alert.component';
+import { EmptyStateComponent } from '../../../../../shared/ui/empty-state/empty-state.component';
 import { ButtonComponent } from '../../../../../shared/ui/button/button.component';
 import { IconComponent } from '../../../../../shared/ui/icon/icon.component';
 import { MessageBoxComponent } from '../../../../../shared/ui/message-box/message-box.component';
@@ -110,6 +111,7 @@ interface PiePaginaApm {
     TableComponent,
     FormTableSearchComponent,
     PaginationComponent,
+    EmptyStateComponent,
     ApmCargaMasivaSideNavComponent,
   ],
   template: `
@@ -572,7 +574,131 @@ interface PiePaginaApm {
                     </h2>
                     <siaf-button variant="accent" size="md" icon="picture_as_pdf" (click)="generarPdf()">Generar PDF</siaf-button>
                   </header>
-                  <siaf-table [columns]="columnasProcesados" [rows]="procesadosRows" idKey="linea" />
+                  @if (hayProcesadosSeccion()) {
+                  @if (usaGrillaCompletaProcesado()) {
+                    <!-- Gastos: grilla completa con años y fila Total -->
+                    <div class="siaf-table-shell">
+                      <table class="siaf-table min-w-[1400px]">
+                        <thead>
+                          <tr class="siaf-table-head-row">
+                            <th class="siaf-table-th whitespace-nowrap text-center" colspan="1">Clasificador institucional</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador fuente de financiamiento</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" rowspan="2">Categoría del gasto</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="1">Clasificador objeto del gasto</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="3">Asignación presupuestaria</th>
+                          </tr>
+                          <tr class="siaf-table-head-row">
+                            <th class="siaf-table-th whitespace-nowrap text-center">Entidad / Pliego</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Fuente de financiamiento</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Subfuente de financiamiento</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Genérica</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2027</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2028</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2029</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (g of gastosProcesados; track g.linea) {
+                            <tr class="siaf-table-row">
+                              <td class="siaf-table-td min-w-[220px]">{{ g.entidad }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.fuente }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.subfuente }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.categoria }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.generica }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.m2027 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.m2028 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ g.m2029 }}</td>
+                            </tr>
+                          }
+                          <tr class="siaf-table-row font-bold">
+                            <td class="siaf-table-td whitespace-nowrap text-right" colspan="5">Total</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2027 }}</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2028 }}</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ gastosTotales.m2029 }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else if (usaGrillaAnexoProcesado()) {
+                    <!-- Anexo 1 / Anexo 2: grilla de Anexo con años y fila Total -->
+                    <div class="siaf-table-shell">
+                      <table class="siaf-table min-w-[1800px]">
+                        <thead>
+                          <tr class="siaf-table-head-row">
+                            <th class="siaf-table-th whitespace-nowrap text-center" colspan="3">Clasificador institucional</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador fuente de financiamiento</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" rowspan="2">Categoría del gasto</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="2">Clasificador objeto del gasto</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]" colspan="3">Asignación presupuestaria</th>
+                          </tr>
+                          <tr class="siaf-table-head-row">
+                            <th class="siaf-table-th whitespace-nowrap text-center">Código</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Entidad / Pliego</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Unidad ejecutora</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Código</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Fuente de financiamiento</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Código</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">Objeto del gasto</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2027</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2028</th>
+                            <th class="siaf-table-th whitespace-nowrap text-center border-l border-[var(--sys-color-divider-default)]">2029</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (a of anexoProcesados; track $index) {
+                            <tr class="siaf-table-row">
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.codigo }}</td>
+                              <td class="siaf-table-td min-w-[220px]">{{ a.entidad }}</td>
+                              <td class="siaf-table-td min-w-[260px]">{{ a.unidadEjecutora }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.codigoFuente }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.fuente }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.categoria }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.codigoObjeto }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.objeto }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.m2027 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.m2028 }}</td>
+                              <td class="siaf-table-td whitespace-nowrap">{{ a.m2029 }}</td>
+                            </tr>
+                          }
+                          <tr class="siaf-table-row font-bold">
+                            <td class="siaf-table-td whitespace-nowrap text-right" colspan="8">Total</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2027 }}</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2028 }}</td>
+                            <td class="siaf-table-td whitespace-nowrap">{{ anexo1Totales.m2029 }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  } @else {
+                    <!-- Pié de página: Pliego + Texto nota + Monto -->
+                    <div class="siaf-table-shell">
+                      <table class="siaf-table min-w-[900px]">
+                        <thead>
+                          <tr class="siaf-table-head-row">
+                            <th class="siaf-table-th whitespace-nowrap">Pliego</th>
+                            <th class="siaf-table-th whitespace-nowrap border-l border-[var(--sys-color-divider-default)]">Texto nota</th>
+                            <th class="siaf-table-th whitespace-nowrap border-l border-[var(--sys-color-divider-default)]">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (p of pieProcesados; track $index) {
+                            <tr class="siaf-table-row">
+                              <td class="siaf-table-td min-w-[220px] align-top">{{ p.pliego }}</td>
+                              <td class="siaf-table-td min-w-[360px] align-top">{{ p.texto }}</td>
+                              <td class="siaf-table-td whitespace-nowrap align-top">{{ p.monto }}</td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                  }
+                  } @else {
+                    <siaf-empty-state
+                      illustration="no-records"
+                      title="Aún no se encontraron resultados"
+                      description="Ingrese los datos para visualizar la información disponible."
+                    />
+                  }
                 </section>
               </div>
             </div>
@@ -881,19 +1007,49 @@ export class GeneracionReporteApmComponent {
     { codigo: '1.1.1.1.0011.012', subgrupo: 'Gobierno Nacional', entidad: 'MINISTERIO DE VIVIENDA, CONSTRUCCIÓN Y SANEAMIENTO' },
   ];
 
-  /** Procesados: estructura consolidada lista para el reporte (datos de ejemplo). */
-  readonly columnasProcesados: DataTableColumn[] = [
-    { key: 'linea', label: 'Línea' },
-    { key: 'entidad', label: 'Entidad / Pliego' },
-    { key: 'fuente', label: 'Fuente de financiamiento' },
-    { key: 'subfuente', label: 'Subfuente de financiamiento' },
-  ];
-  readonly procesadosRows: DataTableRow[] = this.CADENAS_BASE.map((c, i) => ({
+  // ── Procesados: cada sección muestra la misma grilla que Importación, con sus datos ya procesados (sin errores) ──
+
+  /** Gastos: grilla completa (clasificadores + años + Total). */
+  readonly usaGrillaCompletaProcesado = computed(() => this.seccionProcesado() === 'gastos');
+
+  /** Anexo 1 y Anexo 2: comparten la grilla de Anexo. */
+  readonly usaGrillaAnexoProcesado = computed(
+    () => this.seccionProcesado() === 'anexo-1' || this.seccionProcesado() === 'anexo-2',
+  );
+
+  /**
+   * Una sección de Procesados solo muestra su grilla cuando tiene un archivo ya procesado (validado)
+   * en Importación. Como los archivos viven en memoria, al recargar la web Procesados vuelve a vacío.
+   */
+  readonly hayProcesadosSeccion = computed(() =>
+    (this.archivos()[this.seccionProcesado()] ?? []).some((a) => a.estado === 'validado'),
+  );
+
+  /** Filas de Gastos procesadas (mismos datos de ejemplo que Importación, sin marca de error). */
+  readonly gastosProcesados: GastoApm[] = this.GASTOS_BASE.map((g, i) => ({
+    ...g,
     linea: `${i + 1}`,
-    entidad: c.entidad,
-    fuente: c.fuente,
-    subfuente: '19. Recursos por operaciones oficiales de crédito',
+    errada: false,
   }));
+
+  /** Filas de Anexo procesadas (mismos datos de ejemplo que Importación, sin marca de error). */
+  readonly anexoProcesados: AnexoApm[] = this.ANEXO1_BASE.map((a) => ({
+    codigo: '001',
+    errada: false,
+    entidad: this.ANEXO1_ENTIDAD,
+    unidadEjecutora: this.ANEXO1_UNIDAD,
+    codigoFuente: '1',
+    fuente: 'Recursos ordinarios',
+    categoria: '5. Gastos corrientes',
+    codigoObjeto: a.codigoObjeto,
+    objeto: a.objeto,
+    m2027: a.m2027,
+    m2028: a.m2028,
+    m2029: a.m2029,
+  }));
+
+  /** Filas de Pie de página procesadas (mismos datos de ejemplo que Importación, sin marca de error). */
+  readonly pieProcesados: PiePaginaApm[] = this.PIE_BASE.map((p) => ({ pliego: this.PIE_PLIEGO, ...p, errada: false }));
 
   /** Pendiente: generar el PDF del reporte procesado. */
   generarPdf(): void {
